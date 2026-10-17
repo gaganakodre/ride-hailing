@@ -12,6 +12,7 @@ class CarType(str, Enum):
 class RideStatus(str, Enum):
     ONGOING = "ONGOING"
     COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
 class DiscountType(str, Enum):
@@ -122,6 +123,8 @@ class Ride:
     fare: dict | None = None
     created_at: datetime = field(default_factory=now_utc)
     ended_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    cancellation_fee: float | None = None
 
     @property
     def is_upgraded(self) -> bool:
@@ -142,4 +145,6 @@ class Ride:
             "fare": self.fare,
             "created_at": self.created_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
+            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
+            "cancellation_fee": self.cancellation_fee,
         }

@@ -133,7 +133,7 @@ class TestRideService(TestCase):
         ride = self.rides.book_ride(self.user.id, PICKUP, DROP_10_KM, CarType.HATCHBACK)
 
         self.assertEqual([r.id for r in self.rides.get_driver_history(driver.id)["ongoing"]], [ride.id])
-        self.assertEqual(self.rides.get_driver_history(other.id), {"ongoing": [], "completed": []})
+        self.assertEqual(self.rides.get_driver_history(other.id), {"ongoing": [], "completed": [], "cancelled": []})
 
     def test_history_for_unknown_user_raises_not_found(self):
         with self.assertRaises(NotFoundError):

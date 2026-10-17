@@ -23,3 +23,11 @@ class EndRideController(BaseController):
     def process(self):
         ride = self.services.ride_service.end_ride(self.path_parameters.get("ride_id"))
         return StatusCodes.generate_success(200, ride.to_dict())
+
+
+class CancelRideController(BaseController):
+    resource = "ride"
+
+    def process(self):
+        ride = self.services.ride_service.cancel_ride(self.path_parameters.get("ride_id"))
+        return StatusCodes.generate_success(200, ride.to_dict())

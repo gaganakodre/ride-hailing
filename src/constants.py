@@ -6,6 +6,9 @@ from src.pricing import RateCard, Slab
 # Drivers farther than this from the pickup point are not considered.
 SEARCH_RADIUS_KM = 5.0
 
+FREE_CANCELLATION_MINUTES = 5
+CANCELLATION_FEE = 50
+
 # Slab-based rates per car type.
 RATE_CARDS = {
     CarType.HATCHBACK: RateCard(

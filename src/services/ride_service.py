@@ -1,4 +1,5 @@
-from src.constants import CAR_TYPE_FALLBACK, SEARCH_RADIUS_KM
+from src.cancellation import TimeBasedCancellationPolicy
+from src.constants import CANCELLATION_FEE, CAR_TYPE_FALLBACK, FREE_CANCELLATION_MINUTES, SEARCH_RADIUS_KM
 from src.exceptions import InvalidRideStateError, NoDriverAvailableError, NotFoundError
 from src.models import Ride, RideStatus, now_utc
 from src.repository import IdGenerator
@@ -6,13 +7,16 @@ from src.repository import IdGenerator
 
 class RideService:
     def __init__(self, ride_repo, user_service, driver_service, coupon_service, pricing_service,
-                 radius_km=SEARCH_RADIUS_KM):
+                 radius_km=SEARCH_RADIUS_KM, cancellation_policy=None):
         self.ride_repo = ride_repo
         self.user_service = user_service
         self.driver_service = driver_service
         self.coupon_service = coupon_service
         self.pricing_service = pricing_service
         self.radius_km = radius_km
+        self.cancellation_policy = cancellation_policy or TimeBasedCancellationPolicy(
+            FREE_CANCELLATION_MINUTES, CANCELLATION_FEE
+        )
         self.ids = IdGenerator("ride")
 
     def book_ride(self, user_id, pickup, drop, car_type, coupon_code=None):
@@ -56,6 +60,19 @@ class RideService:
         driver.is_available = True
         return ride
 
+    def cancel_ride(self, ride_id):
+        ride = self.get(ride_id)
+        if ride.status != RideStatus.ONGOING:
+            raise InvalidRideStateError(f"Ride {ride_id} is already {ride.status.value}")
+
+        ride.cancelled_at = now_utc()
+        ride.cancellation_fee = self.cancellation_policy.fee_for(ride, ride.cancelled_at)
+        ride.status = RideStatus.CANCELLED
+
+        driver = self.driver_service.get(ride.driver_id)
+        driver.is_available = True  # the cab never moved to the drop, so its location stays as is
+        return ride
+
     def get(self, ride_id):
         ride = self.ride_repo.get(ride_id)
         if ride is None:
@@ -72,11 +89,12 @@ class RideService:
 
     @staticmethod
     def _history(rides):
-        """Split rides into ongoing and completed, newest first."""
+        """Split rides into ongoing, completed and cancelled, newest first."""
         rides = sorted(rides, key=lambda ride: ride.created_at, reverse=True)
         return {
             "ongoing": [ride for ride in rides if ride.status == RideStatus.ONGOING],
             "completed": [ride for ride in rides if ride.status == RideStatus.COMPLETED],
+            "cancelled": [ride for ride in rides if ride.status == RideStatus.CANCELLED],
         }
 
     def _find_driver(self, pickup, requested_car_type):
