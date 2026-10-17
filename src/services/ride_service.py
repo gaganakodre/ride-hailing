@@ -62,6 +62,23 @@ class RideService:
             raise NotFoundError(f"Ride {ride_id} not found")
         return ride
 
+    def get_user_history(self, user_id):
+        self.user_service.get(user_id)  # 404 if the user doesn't exist
+        return self._history([ride for ride in self.ride_repo.all() if ride.user_id == user_id])
+
+    def get_driver_history(self, driver_id):
+        self.driver_service.get(driver_id)  # 404 if the driver doesn't exist
+        return self._history([ride for ride in self.ride_repo.all() if ride.driver_id == driver_id])
+
+    @staticmethod
+    def _history(rides):
+        """Split rides into ongoing and completed, newest first."""
+        rides = sorted(rides, key=lambda ride: ride.created_at, reverse=True)
+        return {
+            "ongoing": [ride for ride in rides if ride.status == RideStatus.ONGOING],
+            "completed": [ride for ride in rides if ride.status == RideStatus.COMPLETED],
+        }
+
     def _find_driver(self, pickup, requested_car_type):
         """Try the requested car type first, then its fallbacks (Hatchback -> Sedan)."""
         for car_type in CAR_TYPE_FALLBACK[requested_car_type]:

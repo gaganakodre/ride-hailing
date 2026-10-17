@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from src.constants import RATE_CARDS
-from src.exceptions import InvalidCouponError, InvalidRideStateError, NoDriverAvailableError
+from src.exceptions import InvalidCouponError, InvalidRideStateError, NoDriverAvailableError, NotFoundError
 from src.models import CarType, DiscountType, Location, RideStatus
 from src.pricing import PricingService
 from src.repository import InMemoryRepository
@@ -112,3 +112,29 @@ class TestRideService(TestCase):
         self.rides.end_ride(ride.id)
         with self.assertRaises(InvalidRideStateError):
             self.rides.end_ride(ride.id)
+
+
+    # --- history ---
+
+    def test_user_history_splits_ongoing_and_completed(self):
+        self.add_driver("1", CarType.HATCHBACK)
+        first = self.rides.book_ride(self.user.id, PICKUP, DROP_10_KM, CarType.HATCHBACK)
+        self.rides.end_ride(first.id)
+        second = self.rides.book_ride(self.user.id, DROP_10_KM, PICKUP, CarType.HATCHBACK)
+
+        history = self.rides.get_user_history(self.user.id)
+
+        self.assertEqual([ride.id for ride in history["completed"]], [first.id])
+        self.assertEqual([ride.id for ride in history["ongoing"]], [second.id])
+
+    def test_driver_history_only_has_that_drivers_rides(self):
+        driver = self.add_driver("1", CarType.HATCHBACK)
+        other = self.add_driver("2", CarType.HATCHBACK, x=4)
+        ride = self.rides.book_ride(self.user.id, PICKUP, DROP_10_KM, CarType.HATCHBACK)
+
+        self.assertEqual([r.id for r in self.rides.get_driver_history(driver.id)["ongoing"]], [ride.id])
+        self.assertEqual(self.rides.get_driver_history(other.id), {"ongoing": [], "completed": []})
+
+    def test_history_for_unknown_user_raises_not_found(self):
+        with self.assertRaises(NotFoundError):
+            self.rides.get_user_history("user_99")
