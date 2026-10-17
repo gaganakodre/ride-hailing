@@ -141,6 +141,12 @@ A few choices are worth calling out (the full list is in [PLAN.md](PLAN.md)):
   since that's where the cab now is.
 - A user can only have one ongoing ride at a time.
 
+##To see every feature in action, run the demo. `--step` pauses after each request:
+
+```bash
+python3 demo.py --step
+```
+
 ## What I would do next
 
 - **Handle two people booking at the same time.** Right now, finding a driver and marking them
